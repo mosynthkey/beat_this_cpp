@@ -46,6 +46,18 @@ brew install fftw libsndfile libsoxr
 sudo apt-get install libfftw3-dev libsndfile1-dev libsoxr-dev
 ```
 
+### Windows Installation
+
+**Option 1: Using vcpkg (Recommended)**
+```cmd
+vcpkg install fftw3 libsndfile soxr
+```
+
+**Option 2: Manual Installation**
+- FFTW3: Download from http://www.fftw.org/install/windows.html
+- libsndfile: Download from https://libsndfile.github.io/libsndfile/
+- soxr: Build from source or use vcpkg
+
 ## Building
 
 1. **Clone the repository**:
@@ -55,10 +67,26 @@ cd beat_this_cpp
 ```
 
 2. **Build the project**:
+
+**Linux/macOS:**
 ```bash
 mkdir build && cd build
 cmake ..
 make
+```
+
+**Windows:**
+```cmd
+# If using vcpkg, set the toolchain file:
+set CMAKE_PREFIX_PATH=C:\vcpkg\installed\x64-windows
+
+# Or use the provided batch script:
+build_windows.bat
+
+# Or manually:
+mkdir build && cd build
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release
 ```
 
 ONNX Runtime will be automatically downloaded during the first build.
