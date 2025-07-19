@@ -325,10 +325,12 @@ set SOXR_ROOT=C:\path\to\soxr
 
 ## License
 
-This project follows the same license as the original Beat This! repository. Please refer to the original project for licensing details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Note: This C++ implementation is separate from the original Beat This! repository. Please refer to the original project for their licensing terms.
 
 ## Acknowledgments
 
-- Original Beat This! team at Johannes Kepler University Linz
-- ONNX Runtime team for the inference engine
-- FFTW, libsndfile, and libsoxr developers
+- **Original Beat This! Implementation**: This C++ port is based on the Beat This! model from Johannes Kepler University Linz. Please refer to the [original repository](https://github.com/CPJKU/beat_this) for the original implementation, research paper, and licensing terms.
+- **ONNX Runtime**: Microsoft's high-performance inference engine
+- **Dependencies**: FFTW (Fastest Fourier Transform in the West), libsndfile, and libsoxr developers
