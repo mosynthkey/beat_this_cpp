@@ -12,9 +12,9 @@ This is a C++ implementation of the Beat This! model, originally published at IS
 ## Features
 
 - **High-Performance**: Native C++ implementation for production environments
-- **Cross-Platform**: Support for macOS, Windows, and Linux
+- **Cross-Platform**: Support for macOS and Windows
 - **Multiple Output Formats**: Export beats to `.beats` files or generate audio click tracks
-- **Modern C++ API**: Clean, type-safe interface with RAII and move semantics
+- **C++ API**: Clean, type-safe interface with RAII and move semantics
 - **Memory Efficient**: Optimized for low memory usage and fast processing
 - **ONNX Runtime**: Uses optimized neural network inference
 - **Flexible CLI**: Support for individual output formats (beats-only or audio-only)
@@ -43,11 +43,6 @@ The system consists of four main components:
 brew install fftw libsndfile libsoxr
 ```
 
-### Ubuntu/Debian
-
-```bash
-sudo apt-get install libfftw3-dev libsndfile1-dev libsoxr-dev
-```
 
 ### Windows
 
@@ -84,7 +79,7 @@ C:\vcpkg\vcpkg.exe install fftw3 libsndfile soxr --triplet=x64-windows
 
 ## Building
 
-### Linux/macOS
+### macOS
 
 ```bash
 git clone https://github.com/your-username/beat_this_cpp.git
@@ -152,7 +147,7 @@ The application supports flexible output options:
 ./beat_this_cpp model.onnx input.wav --output-beats output.beats --output-audio click_track.wav
 ```
 
-### Modern C++ API Usage
+### C++ API Usage
 
 ```cpp
 #include "beat_this_api.h"
@@ -212,7 +207,7 @@ The C++ implementation provides significant performance improvements over the or
 ```
 beat_this_cpp/
 ├── Source/
-│   ├── beat_this_api.h/cpp       # Modern C++ API interface
+│   ├── beat_this_api.h/cpp       # C++ API interface
 │   ├── MelSpectrogram.h/cpp      # Mel spectrogram computation
 │   ├── InferenceProcessor.h/cpp  # Neural network inference
 │   ├── Postprocessor.h/cpp       # Beat extraction
@@ -311,23 +306,6 @@ set SOXR_ROOT=C:\path\to\soxr
 ## License
 
 This project follows the same license as the original Beat This! repository. Please refer to the original project for licensing details.
-
-## Citation
-
-If you use this implementation in your research, please cite the original paper:
-
-```bibtex
-@inproceedings{beatthis2024,
-  title={Beat This! Accurate and Generalizable Beat Tracking},
-  author={[Authors from original paper]},
-  booktitle={Proceedings of the International Society for Music Information Retrieval Conference (ISMIR)},
-  year={2024}
-}
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## Acknowledgments
 
