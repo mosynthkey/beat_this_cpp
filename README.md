@@ -14,9 +14,10 @@ This is a C++ implementation of the Beat This! model, originally published at IS
 - **High-Performance**: Native C++ implementation for production environments
 - **Cross-Platform**: Support for macOS, Windows, and Linux
 - **Multiple Output Formats**: Export beats to `.beats` files or generate audio click tracks
-- **C API**: Clean C-style interface for integration with other languages
+- **Modern C++ API**: Clean, type-safe interface with RAII and move semantics
 - **Memory Efficient**: Optimized for low memory usage and fast processing
 - **ONNX Runtime**: Uses optimized neural network inference
+- **Flexible CLI**: Support for individual output formats (beats-only or audio-only)
 
 ## Architecture
 
@@ -25,7 +26,7 @@ The system consists of four main components:
 1. **Audio Processing**: Load and preprocess audio files (mono conversion, resampling)
 2. **Mel Spectrogram**: Convert audio to 128-dimensional Mel spectrograms
 3. **AI Inference**: Run the trained transformer model using ONNX Runtime
-4. **Post-processing**: Extract beat timestamps from neural network outputs
+4. **Post-processing**: Extract beat timestamps and counts from neural network outputs
 
 ## Dependencies
 
@@ -34,23 +35,46 @@ The system consists of four main components:
 - **libsoxr**: High-quality audio resampling
 - **ONNX Runtime**: Neural network inference engine
 
-### macOS Installation
+## Installation
+
+### macOS
 
 ```bash
 brew install fftw libsndfile libsoxr
 ```
 
-### Ubuntu/Debian Installation
+### Ubuntu/Debian
 
 ```bash
 sudo apt-get install libfftw3-dev libsndfile1-dev libsoxr-dev
 ```
 
-### Windows Installation
+### Windows
 
 **Option 1: Using vcpkg (Recommended)**
+
+1. **Install vcpkg**:
 ```cmd
-vcpkg install fftw3 libsndfile soxr
+# Clone vcpkg
+git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+cd C:\vcpkg
+
+# Bootstrap vcpkg
+.\bootstrap-vcpkg.bat
+
+# Integrate with Visual Studio (optional but recommended)
+.\vcpkg.exe integrate install
+```
+
+2. **Install dependencies**:
+```cmd
+# Install the required packages
+C:\vcpkg\vcpkg.exe install fftw3:x64-windows
+C:\vcpkg\vcpkg.exe install libsndfile:x64-windows  
+C:\vcpkg\vcpkg.exe install soxr:x64-windows
+
+# Or install all at once:
+C:\vcpkg\vcpkg.exe install fftw3 libsndfile soxr --triplet=x64-windows
 ```
 
 **Option 2: Manual Installation**
@@ -60,32 +84,35 @@ vcpkg install fftw3 libsndfile soxr
 
 ## Building
 
-1. **Clone the repository**:
+### Linux/macOS
+
 ```bash
 git clone https://github.com/your-username/beat_this_cpp.git
 cd beat_this_cpp
-```
-
-2. **Build the project**:
-
-**Linux/macOS:**
-```bash
 mkdir build && cd build
 cmake ..
 make
 ```
 
-**Windows:**
+### Windows
+
+**Method 1: Using the Build Script (Recommended)**
 ```cmd
-# If using vcpkg, set the toolchain file:
-set CMAKE_PREFIX_PATH=C:\vcpkg\installed\x64-windows
-
-# Or use the provided batch script:
+cd C:\path\to\beat_this_cpp
 build_windows.bat
+```
 
-# Or manually:
-mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" -A x64
+**Method 2: Manual Build**
+```cmd
+# Set the CMake toolchain file
+set CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+
+# Create build directory and configure
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+
+# Build the project
 cmake --build . --config Release
 ```
 
@@ -108,57 +135,41 @@ If you prefer to install ONNX Runtime manually:
 
 ### Command Line Interface
 
-Process an audio file and save beats to a `.beats` file:
+The application supports flexible output options:
 
+**Beat information only**:
 ```bash
-./beat_this_cpp onnx/beat_this.onnx input.wav output.beats
+./beat_this_cpp model.onnx input.wav --output-beats output.beats
 ```
 
-### Generate Click Track
-
-Convert beat timestamps to an audio click track:
-
+**Audio click track only**:
 ```bash
-./beats_to_audio output.beats click_track.wav
+./beat_this_cpp model.onnx input.wav --output-audio click_track.wav
 ```
 
-### C API Usage
-
-```c
-#include "beat_this_api.h"
-
-// Initialize the API
-void* context = BeatThis_init("beat_this.onnx");
-
-// Process audio
-BeatThisResult result = BeatThis_process_audio(
-    context, audio_data, num_samples, samplerate, channels
-);
-
-// Save results
-BeatThis_save_beats_to_file(context, result, "output.beats");
-
-// Clean up
-BeatThis_free_result(result);
-BeatThis_cleanup(context);
+**Both outputs**:
+```bash
+./beat_this_cpp model.onnx input.wav --output-beats output.beats --output-audio click_track.wav
 ```
 
-### C++ API Usage
+### Modern C++ API Usage
 
 ```cpp
-#include "MelSpectrogram.h"
-#include "InferenceProcessor.h"
-#include "Postprocessor.h"
+#include "beat_this_api.h"
 
-// Create processing pipeline
-MelSpectrogram spect_computer;
-InferenceProcessor processor(session, env);
-Postprocessor postprocessor;
+// Initialize the beat analyzer
+BeatThis::BeatThis analyzer("beat_this.onnx");
 
-// Process audio
-auto spectrogram = spect_computer.compute(audio_data);
-auto logits = processor.process_spectrogram(spectrogram);
-auto beats = postprocessor.process(logits.first, logits.second);
+// Load and process audio
+std::vector<float> audio_data = /* load your audio */;
+auto result = analyzer.process_audio(audio_data, 44100, 2);
+
+// Access results directly
+std::cout << "Found " << result.beats.size() << " beats\n";
+for (size_t i = 0; i < result.beats.size(); ++i) {
+    std::cout << "Beat " << i << ": time=" << result.beats[i] 
+              << "s, count=" << result.beat_counts[i] << "\n";
+}
 ```
 
 ## File Formats
@@ -181,6 +192,13 @@ The `.beats` file format contains tab-separated values:
 - **Column 1**: Beat time in seconds
 - **Column 2**: Beat number (1 = downbeat, 2-4 = other beats)
 
+### Audio Click Track
+Generated WAV files contain:
+- **Downbeats**: 880 Hz sine wave
+- **Other beats**: 440 Hz sine wave
+- **Format**: 44.1 kHz, mono, float
+- **Duration**: 0.1 seconds per beat with ADSR envelope
+
 ## Performance
 
 The C++ implementation provides significant performance improvements over the original Python version:
@@ -194,15 +212,92 @@ The C++ implementation provides significant performance improvements over the or
 ```
 beat_this_cpp/
 ├── Source/
-│   ├── beat_this_api.h/cpp       # C API interface
+│   ├── beat_this_api.h/cpp       # Modern C++ API interface
 │   ├── MelSpectrogram.h/cpp      # Mel spectrogram computation
 │   ├── InferenceProcessor.h/cpp  # Neural network inference
 │   ├── Postprocessor.h/cpp       # Beat extraction
-│   ├── main.cpp                  # Command line interface
-│   └── beats_to_audio.cpp        # Click track generation
+│   └── main.cpp                  # Command line interface with audio generation
 ├── ThirdParty/                   # External dependencies
 ├── onnx/                         # ONNX model files
+├── cmake/                        # CMake modules
 └── CMakeLists.txt               # Build configuration
+```
+
+## API Reference
+
+### BeatResult Structure
+```cpp
+namespace BeatThis {
+    struct BeatResult {
+        std::vector<float> beats;        // Beat timestamps in seconds
+        std::vector<float> downbeats;    // Downbeat timestamps in seconds  
+        std::vector<int> beat_counts;    // Beat numbers (1=downbeat, 2,3,4...=other beats)
+    };
+}
+```
+
+### BeatThis Class
+```cpp
+namespace BeatThis {
+    class BeatThis {
+    public:
+        explicit BeatThis(const std::string& onnx_model_path);
+        
+        // Process audio from vector
+        BeatResult process_audio(
+            const std::vector<float>& audio_data,
+            int samplerate,
+            int channels = 1
+        );
+        
+        // Process audio from raw pointer
+        BeatResult process_audio(
+            const float* audio_data,
+            size_t num_samples,
+            int samplerate,
+            int channels = 1
+        );
+    };
+}
+```
+
+## Windows-Specific Notes
+
+### Running the Application
+
+After a successful build, the executables will be in:
+- `build\Release\beat_this_cpp.exe` - Main application
+- `build\Release\beat_this_api.dll` - API library
+
+### Troubleshooting
+
+**CMake can't find dependencies**:
+- Make sure vcpkg is properly installed and integrated
+- Verify the CMAKE_TOOLCHAIN_FILE points to the correct vcpkg cmake file
+- Try setting CMAKE_PREFIX_PATH: `set CMAKE_PREFIX_PATH=C:\vcpkg\installed\x64-windows`
+
+**Missing DLL errors when running**:
+- Make sure `onnxruntime.dll` is in the same directory as the executable, or in your PATH
+- The build process should automatically copy it, but you may need to do this manually
+
+**Visual Studio version issues**:
+- If you have a different version of Visual Studio, adjust the generator:
+  - VS 2019: `-G "Visual Studio 16 2019" -A x64`
+  - VS 2017: `-G "Visual Studio 15 2017" -A x64`
+
+### Alternative: Using Pre-built Libraries
+
+If you prefer not to use vcpkg, you can manually download and install:
+
+1. **FFTW3**: Download from http://www.fftw.org/install/windows.html
+2. **libsndfile**: Download from https://libsndfile.github.io/libsndfile/
+3. **soxr**: Build from source or use vcpkg
+
+Then set the environment variables:
+```cmd
+set FFTW_ROOT=C:\path\to\fftw
+set SNDFILE_ROOT=C:\path\to\libsndfile  
+set SOXR_ROOT=C:\path\to\soxr
 ```
 
 ## Model Details

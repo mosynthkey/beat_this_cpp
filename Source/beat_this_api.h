@@ -1,58 +1,50 @@
-#ifndef BEAT_THIS_API_H
-#define BEAT_THIS_API_H
+#pragma once
 
 #include <vector>
+#include <string>
+#include <memory>
+#include <utility>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace BeatThis {
 
-// Define a struct to hold the results
-typedef struct {
-    float* beats;
-    int num_beats;
-    float* downbeats;
-    int num_downbeats;
-} BeatThisResult;
+struct BeatResult {
+    std::vector<float> beats;
+    std::vector<float> downbeats;
+    std::vector<int> beat_counts; // Beat numbers for each beat (1 = downbeat, 2,3,4... = other beats)
+};
 
-// Function to initialize the BeatThis API
-// Returns a pointer to an internal context, or NULL on failure.
-void* BeatThis_init(const char* onnx_model_path);
+class BeatThis {
+public:
+    explicit BeatThis(const std::string& onnx_model_path);
+    ~BeatThis();
 
-// Function to process audio and get beat/downbeat times
-// context: Pointer returned by BeatThis_init
-// audio_data: Pointer to float array of audio samples
-// num_samples: Number of audio samples
-// samplerate: Sample rate of the audio data
-// Returns a BeatThisResult struct. The caller is responsible for freeing the beats and downbeats arrays using BeatThis_free_result.
-BeatThisResult BeatThis_process_audio(
-    void* context,
-    const float* audio_data,
-    int num_samples,
-    int samplerate,
-    int original_channels
-);
+    // Move semantics
+    BeatThis(BeatThis&&) = default;
+    BeatThis& operator=(BeatThis&&) = default;
 
-// Function to free the memory allocated for BeatThisResult
-void BeatThis_free_result(BeatThisResult result);
+    // Delete copy semantics
+    BeatThis(const BeatThis&) = delete;
+    BeatThis& operator=(const BeatThis&) = delete;
 
-// Function to save beat information to a .beats file
-// context: Pointer returned by BeatThis_init
-// result: BeatThisResult struct containing beat and downbeat times
-// output_filepath: Path to the output .beats file
-// Returns true on success, false on failure.
-bool BeatThis_save_beats_to_file(
-    void* context,
-    BeatThisResult result,
-    const char* output_filepath
-);
+    // Process audio and get beat/downbeat times as vector data
+    BeatResult process_audio(
+        const std::vector<float>& audio_data,
+        int samplerate,
+        int channels = 1
+    );
 
-// Function to clean up the BeatThis API context
-void BeatThis_cleanup(void* context);
+    // Overload for raw pointer interface
+    BeatResult process_audio(
+        const float* audio_data,
+        size_t num_samples,
+        int samplerate,
+        int channels = 1
+    );
 
 
-#ifdef __cplusplus
-}
-#endif
+private:
+    class Impl;
+    std::unique_ptr<Impl> pImpl;
+};
 
-#endif // BEAT_THIS_API_H
+} // namespace BeatThis

@@ -201,11 +201,8 @@ target_include_directories(beat_this_api PRIVATE
 
 target_link_libraries(beat_this_api onnxruntime ${SNDFILE_LIBRARIES} ${SOXR_LIBRARIES} ${FFTW3_LIBRARIES})
 
-# Example executable for testing the API
+# Main executable with integrated beat analysis and audio generation
 add_executable(beat_this_cpp Source/main.cpp)
-
-# New executable for beats to audio conversion
-add_executable(beats_to_audio Source/beats_to_audio.cpp)
 
 target_include_directories(beat_this_cpp PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS} # For main.cpp to include onnxruntime_cxx_api.h
@@ -217,9 +214,3 @@ target_include_directories(beat_this_cpp PRIVATE
 )
 
 target_link_libraries(beat_this_cpp beat_this_api ${SNDFILE_LIBRARIES})
-
-target_link_libraries(beats_to_audio ${SNDFILE_LIBRARIES})
-
-target_include_directories(beats_to_audio PRIVATE
-    ${SNDFILE_INCLUDE_DIRS}
-)
