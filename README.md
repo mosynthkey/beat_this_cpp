@@ -13,7 +13,7 @@ This is a C++ implementation of the Beat This! model, originally published at IS
 
 - **High-Performance**: Native C++ implementation for production environments
 - **Cross-Platform**: Support for macOS and Windows
-- **Multiple Output Formats**: Export beats to `.beats` files or generate audio click tracks
+- **Multiple Output Formats**: Export beats to `.beats` files, generate audio click tracks, or create mixed audio with original music
 - **C++ API**: Clean, type-safe interface with RAII and move semantics
 - **Memory Efficient**: Optimized for low memory usage and fast processing
 - **ONNX Runtime**: Uses optimized neural network inference
@@ -142,9 +142,14 @@ The application supports flexible output options:
 ./beat_this_cpp model.onnx input.wav --output-audio click_track.wav
 ```
 
-**Both outputs**:
+**Mixed audio (original music + click track)**:
 ```bash
-./beat_this_cpp model.onnx input.wav --output-beats output.beats --output-audio click_track.wav
+./beat_this_cpp model.onnx input.wav --output-mixed mixed.wav
+```
+
+**Multiple outputs**:
+```bash
+./beat_this_cpp model.onnx input.wav --output-beats output.beats --output-audio clicks.wav --output-mixed mixed.wav
 ```
 
 ### C++ API Usage
@@ -187,12 +192,27 @@ The `.beats` file format contains tab-separated values:
 - **Column 1**: Beat time in seconds
 - **Column 2**: Beat number (1 = downbeat, 2-4 = other beats)
 
-### Audio Click Track
+### Audio Click Track (`--output-audio`)
 Generated WAV files contain:
 - **Downbeats**: 880 Hz sine wave
 - **Other beats**: 440 Hz sine wave
 - **Format**: 44.1 kHz, mono, float
 - **Duration**: 0.1 seconds per beat with ADSR envelope
+
+### Mixed Audio (`--output-mixed`)
+Mixed audio files combine original music with click track:
+- **Original music**: 70% volume, preserved exactly as input
+- **Click track**: 30% volume, synchronized with detected beats
+- **Format preservation**: Maintains original sample rate and channel configuration
+- **Stereo/mono support**: Stereo inputs remain stereo, mono inputs remain mono
+- **High fidelity**: No resampling or format conversion to preserve audio quality
+- **Duration**: Uses the longer of original audio or beat track duration
+
+#### Mixed Audio Technical Details
+- **Stereo processing**: Click track is added to both left and right channels
+- **Mono processing**: Click track is added directly to the mono channel
+- **Automatic normalization**: Prevents clipping while maintaining dynamic range
+- **Frame-accurate timing**: Beat placement is sample-accurate for tight synchronization
 
 ## Performance
 

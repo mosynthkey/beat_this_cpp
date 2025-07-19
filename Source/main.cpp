@@ -8,12 +8,10 @@
 #include <cmath>
 
 #include "sndfile.h" // For load_audio_for_example
+#include "soxr.h"    // For resampling in mixed audio
 #include "beat_this_api.h"
 
-// Function to load audio from file (simplified for example)
-// In a real application, this would use platform-specific audio loading.
-// For this example, we'll assume a simple WAV file loading.
-// This function is for demonstration purposes and not part of the core API.
+// Function to load audio from file
 bool load_audio_for_example(const std::string& path, std::vector<float>& audio_buffer, int& samplerate, int& channels) {
     SF_INFO sfinfo;
     SNDFILE* infile = sf_open(path.c_str(), SFM_READ, &sfinfo);
@@ -31,7 +29,7 @@ bool load_audio_for_example(const std::string& path, std::vector<float>& audio_b
     return true;
 }
 
-// Function to save beat information to a .beats file
+// Function to save beat information to .beats file
 bool save_beats_to_file(const BeatThis::BeatResult& result, const std::string& output_filepath) {
     std::ofstream outfile(output_filepath);
     if (!outfile.is_open()) {
@@ -86,16 +84,16 @@ std::vector<float> generate_sine_wave(
 }
 
 // Function to write WAV file
-bool write_wav_file(const std::string& filepath, const std::vector<float>& audio_data, int sample_rate) {
+bool write_wav_file(const std::string& filepath, const std::vector<float>& audio_data, int sample_rate, int channels = 1) {
     SF_INFO sfinfo;
     sfinfo.samplerate = sample_rate;
-    sfinfo.channels = 1; // Mono
-    sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT; // WAV, float format
+    sfinfo.channels = channels;
+    sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
 
     SNDFILE* outfile = sf_open(filepath.c_str(), SFM_WRITE, &sfinfo);
     if (!outfile) {
         std::cerr << "Error: Could not open WAV file for writing: " << filepath << std::endl;
-        std::cerr << sf_strerror(NULL) << std::endl; // Print libsndfile error
+        std::cerr << sf_strerror(NULL) << std::endl;
         return false;
     }
 
@@ -151,17 +149,92 @@ bool generate_beats_audio(const BeatThis::BeatResult& result, const std::string&
     return write_wav_file(output_wav_file, final_audio, SAMPLE_RATE);
 }
 
+// Function to generate mixed audio (original + beats)
+bool generate_mixed_audio(const BeatThis::BeatResult& result, 
+                         const std::vector<float>& original_audio, 
+                         int original_samplerate,
+                         int original_channels,
+                         const std::string& output_wav_file) {
+    if (result.beats.empty()) {
+        std::cerr << "Error: No beats to generate audio from." << std::endl;
+        return false;
+    }
+
+    // Preserve original audio characteristics
+    int output_samplerate = original_samplerate;
+    int output_channels = original_channels;
+    
+    // Calculate total duration
+    double last_beat_time = result.beats.back() + DURATION_PER_BEAT + DECAY_TIME;
+    double original_duration = static_cast<double>(original_audio.size()) / (output_samplerate * output_channels);
+    double total_duration = std::max(last_beat_time, original_duration);
+    
+    int total_samples = static_cast<int>(total_duration * output_samplerate * output_channels);
+    std::vector<float> final_audio(total_samples, 0.0f);
+
+    // Copy original audio with reduced volume
+    size_t copied_samples = std::min(original_audio.size(), static_cast<size_t>(total_samples));
+    for (size_t i = 0; i < copied_samples; ++i) {
+        final_audio[i] = original_audio[i] * 0.7f;
+    }
+
+    // Add click track
+    for (size_t i = 0; i < result.beats.size(); ++i) {
+        double frequency = (result.beat_counts[i] == 1) ? 880.0 : 440.0; // Downbeat : Other beats
+        
+        std::vector<float> beat_waveform = generate_sine_wave(
+            frequency, DURATION_PER_BEAT, ATTACK_TIME, DECAY_TIME, output_samplerate
+        );
+
+        int start_frame = static_cast<int>(result.beats[i] * output_samplerate);
+        
+        for (size_t j = 0; j < beat_waveform.size(); ++j) {
+            int frame_pos = start_frame + j;
+            if (output_channels == 2) {
+                // Stereo: add click to both channels
+                int left_sample = frame_pos * 2;
+                int right_sample = frame_pos * 2 + 1;
+                if (left_sample < total_samples && right_sample < total_samples) {
+                    final_audio[left_sample] += beat_waveform[j] * 0.3f;
+                    final_audio[right_sample] += beat_waveform[j] * 0.3f;
+                }
+            } else {
+                // Mono: add click directly
+                if (frame_pos < total_samples) {
+                    final_audio[frame_pos] += beat_waveform[j] * 0.3f;
+                }
+            }
+        }
+    }
+
+    // Normalize audio to prevent clipping
+    float max_val = 0.0f;
+    for (float sample : final_audio) {
+        max_val = std::max(max_val, std::abs(sample));
+    }
+    
+    if (max_val > 1.0f) {
+        for (float& sample : final_audio) {
+            sample /= max_val;
+        }
+    }
+
+    return write_wav_file(output_wav_file, final_audio, output_samplerate, output_channels);
+}
+
 void print_usage(const char* program_name) {
     std::cerr << "Usage: " << program_name << " <onnx_model_path> <audio_file_path> [options]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "  --output-beats <file>    Save beat information to .beats file" << std::endl;
     std::cerr << "  --output-audio <file>    Generate audio file with beats as click track" << std::endl;
+    std::cerr << "  --output-mixed <file>    Generate audio file with original music + click track" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats" << std::endl;
     std::cerr << "  " << program_name << " model.onnx input.wav --output-audio output.wav" << std::endl;
-    std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats --output-audio output.wav" << std::endl;
+    std::cerr << "  " << program_name << " model.onnx input.wav --output-mixed mixed.wav" << std::endl;
+    std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats --output-mixed mixed.wav" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -174,6 +247,7 @@ int main(int argc, char* argv[]) {
     const std::string audio_file_path = argv[2];
     std::string output_beats_file;
     std::string output_wav_file;
+    std::string output_mixed_file;
 
     // Parse command line arguments
     for (int i = 3; i < argc; i++) {
@@ -182,6 +256,8 @@ int main(int argc, char* argv[]) {
             output_beats_file = argv[++i];
         } else if (arg == "--output-audio" && i + 1 < argc) {
             output_wav_file = argv[++i];
+        } else if (arg == "--output-mixed" && i + 1 < argc) {
+            output_mixed_file = argv[++i];
         } else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             print_usage(argv[0]);
@@ -190,8 +266,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Check if at least one output is specified
-    if (output_beats_file.empty() && output_wav_file.empty()) {
-        std::cerr << "Error: At least one output option must be specified (--output-beats or --output-audio)" << std::endl;
+    if (output_beats_file.empty() && output_wav_file.empty() && output_mixed_file.empty()) {
+        std::cerr << "Error: At least one output option must be specified (--output-beats, --output-audio, or --output-mixed)" << std::endl;
         print_usage(argv[0]);
         return 1;
     }
@@ -231,6 +307,16 @@ int main(int argc, char* argv[]) {
                 std::cout << "Beat audio generated: " << output_wav_file << std::endl;
             } else {
                 std::cerr << "Failed to generate beat audio." << std::endl;
+                return 1;
+            }
+        }
+
+        // Generate mixed audio if requested
+        if (!output_mixed_file.empty()) {
+            if (generate_mixed_audio(result, audio_buffer, samplerate, channels, output_mixed_file)) {
+                std::cout << "Mixed audio generated: " << output_mixed_file << std::endl;
+            } else {
+                std::cerr << "Failed to generate mixed audio." << std::endl;
                 return 1;
             }
         }
