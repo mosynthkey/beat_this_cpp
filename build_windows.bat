@@ -36,7 +36,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Build the project
 echo Building project...
-cmake --build . --config Debug
+cmake --build . --config Release
 
 if %ERRORLEVEL% neq 0 (
     echo Build failed!
@@ -46,4 +46,6 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Build completed successfully!
-echo.echo.echo Executables are in: build\Debug\
+echo.
+echo.
+echo Executables are in: build\Release\
