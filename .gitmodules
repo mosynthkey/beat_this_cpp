@@ -1,0 +1,3 @@
+[submodule "onnx/beat_this"]
+	path = onnx/beat_this
+	url = https://github.com/CPJKU/beat_this.git

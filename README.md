@@ -79,6 +79,12 @@ C:\vcpkg\vcpkg.exe install fftw3 libsndfile soxr --triplet=x64-windows
 
 ## Building
 
+### Prerequisites
+
+The pre-converted ONNX model is already included in the repository (`onnx/beat_this.onnx`). You can start building and using the application immediately.
+
+If you need to convert a custom model, see [onnx/README.md](onnx/README.md) for detailed instructions on converting PyTorch checkpoints to ONNX format.
+
 ### macOS
 
 ```bash
@@ -134,22 +140,22 @@ The application supports flexible output options:
 
 **Beat information only**:
 ```bash
-./beat_this_cpp model.onnx input.wav --output-beats output.beats
+./beat_this_cpp onnx/beat_this.onnx input.wav --output-beats output.beats
 ```
 
 **Audio click track only**:
 ```bash
-./beat_this_cpp model.onnx input.wav --output-audio click_track.wav
+./beat_this_cpp onnx/beat_this.onnx input.wav --output-audio click_track.wav
 ```
 
 **Mixed audio (original music + click track)**:
 ```bash
-./beat_this_cpp model.onnx input.wav --output-mixed mixed.wav
+./beat_this_cpp onnx/beat_this.onnx input.wav --output-mixed mixed.wav
 ```
 
 **Multiple outputs**:
 ```bash
-./beat_this_cpp model.onnx input.wav --output-beats output.beats --output-audio clicks.wav --output-mixed mixed.wav
+./beat_this_cpp onnx/beat_this.onnx input.wav --output-beats output.beats --output-audio clicks.wav --output-mixed mixed.wav
 ```
 
 ### C++ API Usage
@@ -232,8 +238,12 @@ beat_this_cpp/
 │   ├── InferenceProcessor.h/cpp  # Neural network inference
 │   ├── Postprocessor.h/cpp       # Beat extraction
 │   └── main.cpp                  # Command line interface with audio generation
+├── onnx/
+│   ├── beat_this.onnx           # Pre-converted ONNX model (ready to use)
+│   ├── convert_to_onnx.py       # PyTorch to ONNX conversion script
+│   ├── beat_this/               # Local beat_this submodule for conversion
+│   └── README.md                # ONNX model setup and conversion guide
 ├── ThirdParty/                   # External dependencies
-├── onnx/                         # ONNX model files
 ├── cmake/                        # CMake modules
 └── CMakeLists.txt               # Build configuration
 ```
@@ -318,10 +328,21 @@ set SOXR_ROOT=C:\path\to\soxr
 ## Model Details
 
 - **Architecture**: Transformer-based neural network
-- **Input**: 128-dimensional Mel spectrograms
+- **Input**: 128-dimensional Mel spectrograms (batch, time, freq)
 - **Output**: Beat and downbeat probability logits
-- **Training**: Trained on large-scale music datasets
+- **Training**: Trained on large-scale music datasets from the original Beat This! research
 - **Inference**: Chunked processing for long audio files
+- **ONNX Compatibility**: Fully compatible with ONNX Runtime, opset version 14
+
+### ONNX Model Information
+
+The included ONNX model (`onnx/beat_this.onnx`) is converted from the official Beat This! PyTorch checkpoint:
+
+- **Source**: https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/final0.ckpt
+- **Input format**: `input_spectrogram` with shape `[1, time_frames, 128]`
+- **Output format**: `beat` and `downbeat` logits with shape `[1, time_frames]`
+- **Dynamic axes**: Variable time dimension for processing audio of any length
+- **Model size**: ~97 MB (includes full transformer architecture)
 
 ## License
 
