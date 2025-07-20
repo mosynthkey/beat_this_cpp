@@ -14,7 +14,6 @@
 #include <stdexcept>
 #include <codecvt>
 #include <locale>
-
 namespace BeatThis {
 
 // Pimpl implementation
@@ -33,13 +32,24 @@ public:
         file_check.close();
         
         Ort::SessionOptions session_options;
+
+#ifdef _WIN32
+#include <codecvt>
+#include <locale>
+#endif
         
-        // Convert string to wstring for ONNX Runtime
+        #ifdef _WIN32
+        // On Windows, ONNX Runtime expects a wide string path
         std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
         std::wstring w_model_path = converter.from_bytes(onnx_model_path);
+        const ORTCHAR_T* model_path_ort = w_model_path.c_str();
+#else
+        // On non-Windows, ONNX Runtime expects a narrow string path
+        const ORTCHAR_T* model_path_ort = onnx_model_path.c_str();
+#endif
         
         try {
-            session = std::make_unique<Ort::Session>(env, w_model_path.c_str(), session_options);
+            session = std::make_unique<Ort::Session>(env, model_path_ort, session_options);
         } catch (const Ort::Exception& e) {
             std::cerr << "ONNX Runtime error during session creation: " << e.what() << std::endl;
             std::cerr << "Error code: " << e.GetOrtErrorCode() << std::endl;
