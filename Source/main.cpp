@@ -224,6 +224,41 @@ bool generate_mixed_audio(const BeatThis::BeatResult& result,
     return write_wav_file(output_wav_file, final_audio, output_samplerate, output_channels);
 }
 
+// Function to calculate BPM from beat timestamps
+double calculate_bpm(const BeatThis::BeatResult& result) {
+    if (result.beats.size() < 2) {
+        return 0.0; // Need at least 2 beats to calculate intervals
+    }
+
+    std::vector<double> intervals;
+    intervals.reserve(result.beats.size() - 1);
+    
+    // Calculate inter-beat intervals
+    for (size_t i = 1; i < result.beats.size(); ++i) {
+        double interval = result.beats[i] - result.beats[i-1];
+        if (interval > 0.1 && interval < 3.0) { // Filter out unrealistic intervals (less than 20 BPM or more than 600 BPM)
+            intervals.push_back(interval);
+        }
+    }
+    
+    if (intervals.empty()) {
+        return 0.0;
+    }
+    
+    // Use median interval to avoid outliers affecting the result
+    std::sort(intervals.begin(), intervals.end());
+    double median_interval;
+    size_t n = intervals.size();
+    if (n % 2 == 0) {
+        median_interval = (intervals[n/2 - 1] + intervals[n/2]) / 2.0;
+    } else {
+        median_interval = intervals[n/2];
+    }
+    
+    // Convert interval to BPM: 60 seconds per minute / interval in seconds
+    return 60.0 / median_interval;
+}
+
 void print_usage(const char* program_name) {
     std::cerr << "Usage: " << program_name << " <onnx_model_path> <audio_file_path> [options]" << std::endl;
     std::cerr << std::endl;
@@ -231,12 +266,14 @@ void print_usage(const char* program_name) {
     std::cerr << "  --output-beats <file>    Save beat information to .beats file" << std::endl;
     std::cerr << "  --output-audio <file>    Generate audio file with beats as click track" << std::endl;
     std::cerr << "  --output-mixed <file>    Generate audio file with original music + click track" << std::endl;
+    std::cerr << "  --calc-bpm               Calculate and display BPM from detected beats" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats" << std::endl;
     std::cerr << "  " << program_name << " model.onnx input.wav --output-audio output.wav" << std::endl;
     std::cerr << "  " << program_name << " model.onnx input.wav --output-mixed mixed.wav" << std::endl;
-    std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats --output-mixed mixed.wav" << std::endl;
+    std::cerr << "  " << program_name << " model.onnx input.wav --calc-bpm" << std::endl;
+    std::cerr << "  " << program_name << " model.onnx input.wav --output-beats output.beats --calc-bpm" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -255,6 +292,7 @@ int main(int argc, char* argv[]) {
     std::string output_beats_file;
     std::string output_wav_file;
     std::string output_mixed_file;
+    bool calc_bpm = false;
 
     // Parse command line arguments
     for (int i = 3; i < argc; i++) {
@@ -265,6 +303,8 @@ int main(int argc, char* argv[]) {
             output_wav_file = argv[++i];
         } else if (arg == "--output-mixed" && i + 1 < argc) {
             output_mixed_file = argv[++i];
+        } else if (arg == "--calc-bpm") {
+            calc_bpm = true;
         } else {
             std::cerr << "Unknown argument: " << arg << std::endl;
             print_usage(argv[0]);
@@ -273,8 +313,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Check if at least one output is specified
-    if (output_beats_file.empty() && output_wav_file.empty() && output_mixed_file.empty()) {
-        std::cerr << "Error: At least one output option must be specified (--output-beats, --output-audio, or --output-mixed)" << std::endl;
+    if (output_beats_file.empty() && output_wav_file.empty() && output_mixed_file.empty() && !calc_bpm) {
+        std::cerr << "Error: At least one output option must be specified (--output-beats, --output-audio, --output-mixed, or --calc-bpm)" << std::endl;
         print_usage(argv[0]);
         return 1;
     }
@@ -297,6 +337,16 @@ int main(int argc, char* argv[]) {
         auto result = beat_analyzer.process_audio(audio_buffer, samplerate, channels);
 
         std::cout << "Found " << result.beats.size() << " beats and " << result.downbeats.size() << " downbeats" << std::endl;
+
+        // Calculate and display BPM if requested
+        if (calc_bpm) {
+            double bpm = calculate_bpm(result);
+            if (bpm > 0.0) {
+                std::cout << "Estimated BPM: " << std::fixed << std::setprecision(1) << bpm << std::endl;
+            } else {
+                std::cout << "Could not calculate BPM (insufficient or invalid beat data)" << std::endl;
+            }
+        }
 
         // Save results to .beats file if requested
         if (!output_beats_file.empty()) {
