@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(BeatThisCpp)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Platform-specific compiler flags
@@ -11,39 +11,20 @@ if(WIN32)
     if(MSVC)
         # Use UTF-8 encoding and disable some warnings
         add_compile_options(/utf-8 /wd4996)
+        # Use static runtime
+        # set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 else()
     # Unix-like systems (macOS, Linux)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 endif()
 
 # --- FFTW --- #
 if(WIN32)
-    # Windows: Use vcpkg or manual installation
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(FFTW3 fftw3f)
-    endif()
-    
-    if(NOT FFTW3_FOUND)
-        # Try to find FFTW manually on Windows
-        find_path(FFTW3_INCLUDE_DIR fftw3.h
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/include
-                $ENV{FFTW_ROOT}/include
-                "C:/vcpkg/installed/x64-windows/include"
-                "C:/Program Files/fftw/include"
-        )
-        
-        find_library(FFTW3_LIBRARIES
-            NAMES fftw3f libfftw3f fftw3f-3
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/lib
-                $ENV{FFTW_ROOT}/lib
-                "C:/vcpkg/installed/x64-windows/lib"
-                "C:/Program Files/fftw/lib"
-        )
-    endif()
+    # Windows: Use vcpkg find_package for headers, manual library linking
+    find_package(FFTW3 CONFIG REQUIRED)
+    set(FFTW3_INCLUDE_DIR ${FFTW3_INCLUDE_DIRS})
+    set(FFTW3_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/fftw3f.lib")
 elseif(APPLE)
     # Add Homebrew library path for macOS
     link_directories(/opt/homebrew/lib)
@@ -94,56 +75,19 @@ endif()
 
 # --- Find Dependencies --- #
 if(WIN32)
-    # Windows: Try to find libraries manually or via vcpkg
-    find_package(PkgConfig QUIET)
+    # Windows: Use vcpkg find_package
+    find_package(FFTW3 CONFIG REQUIRED)
+    find_package(SndFile CONFIG REQUIRED)
     
-    # Find sndfile
-    if(PkgConfig_FOUND)
-        pkg_check_modules(SNDFILE sndfile)
-    endif()
+    # Set variables for compatibility
+    set(FFTW3_INCLUDE_DIRS ${FFTW3_INCLUDE_DIRS})
+    set(FFTW3_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/fftw3f.lib")
+    set(SNDFILE_INCLUDE_DIRS ${SndFile_INCLUDE_DIRS})
+    set(SNDFILE_LIBRARIES SndFile::sndfile)
     
-    if(NOT SNDFILE_FOUND)
-        find_path(SNDFILE_INCLUDE_DIRS sndfile.h
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/include
-                $ENV{SNDFILE_ROOT}/include
-                "C:/vcpkg/installed/x64-windows/include"
-                "C:/Program Files/libsndfile/include"
-        )
-        
-        find_library(SNDFILE_LIBRARIES
-            NAMES sndfile libsndfile sndfile-1
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/lib
-                $ENV{SNDFILE_ROOT}/lib
-                "C:/vcpkg/installed/x64-windows/lib"
-                "C:/Program Files/libsndfile/lib"
-        )
-    endif()
-    
-    # Find soxr
-    if(PkgConfig_FOUND)
-        pkg_check_modules(SOXR soxr)
-    endif()
-    
-    if(NOT SOXR_FOUND)
-        find_path(SOXR_INCLUDE_DIRS soxr.h
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/include
-                $ENV{SOXR_ROOT}/include
-                "C:/vcpkg/installed/x64-windows/include"
-                "C:/Program Files/soxr/include"
-        )
-        
-        find_library(SOXR_LIBRARIES
-            NAMES soxr libsoxr
-            HINTS 
-                ${CMAKE_PREFIX_PATH}/lib
-                $ENV{SOXR_ROOT}/lib
-                "C:/vcpkg/installed/x64-windows/lib"
-                "C:/Program Files/soxr/lib"
-        )
-    endif()
+    # Set soxr paths manually
+    set(SOXR_INCLUDE_DIRS "C:/vcpkg/installed/x64-windows/include")
+    set(SOXR_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/soxr.lib")
 else()
     # macOS and Linux: Use pkg-config
     find_package(PkgConfig REQUIRED)
@@ -162,33 +106,14 @@ add_library(beat_this_api SHARED
 if(WIN32)
     set_target_properties(beat_this_api PROPERTIES
         WINDOWS_EXPORT_ALL_SYMBOLS ON
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Release
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Release
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Release
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>
     )
 endif()
 
 # Check if all required dependencies were found
-if(WIN32)
-    if(NOT FFTW3_INCLUDE_DIR AND NOT FFTW3_INCLUDE_DIRS)
-        message(FATAL_ERROR "FFTW3 not found! Please install via vcpkg: vcpkg install fftw3")
-    endif()
-    if(NOT SNDFILE_INCLUDE_DIRS)
-        message(FATAL_ERROR "libsndfile not found! Please install via vcpkg: vcpkg install libsndfile")
-    endif()
-    if(NOT SOXR_INCLUDE_DIRS)
-        message(FATAL_ERROR "libsoxr not found! Please install via vcpkg: vcpkg install libsoxr")
-    endif()
-    if(NOT FFTW3_LIBRARIES)
-        message(FATAL_ERROR "FFTW3 libraries not found! Please install via vcpkg: vcpkg install fftw3")
-    endif()
-    if(NOT SNDFILE_LIBRARIES)
-        message(FATAL_ERROR "libsndfile libraries not found! Please install via vcpkg: vcpkg install libsndfile")
-    endif()
-    if(NOT SOXR_LIBRARIES)
-        message(FATAL_ERROR "libsoxr libraries not found! Please install via vcpkg: vcpkg install libsoxr")
-    endif()
-endif()
+# find_package will throw an error if dependencies are not found
 
 target_include_directories(beat_this_api PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS}
@@ -200,6 +125,16 @@ target_include_directories(beat_this_api PRIVATE
 )
 
 target_link_libraries(beat_this_api onnxruntime ${SNDFILE_LIBRARIES} ${SOXR_LIBRARIES} ${FFTW3_LIBRARIES})
+
+if(WIN32)
+    add_custom_command(
+        TARGET beat_this_api POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ONNXRUNTIME_LIBRARIES}/onnxruntime.dll"
+        "$<TARGET_FILE_DIR:beat_this_api>"
+        COMMENT "Copying onnxruntime.dll to API DLL directory"
+    )
+endif()
 
 # Main executable with integrated beat analysis and audio generation
 add_executable(beat_this_cpp Source/main.cpp)
@@ -214,3 +149,13 @@ target_include_directories(beat_this_cpp PRIVATE
 )
 
 target_link_libraries(beat_this_cpp beat_this_api ${SNDFILE_LIBRARIES})
+
+if(WIN32)
+    add_custom_command(
+        TARGET beat_this_cpp POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ONNXRUNTIME_LIBRARIES}/onnxruntime.dll"
+        "$<TARGET_FILE_DIR:beat_this_cpp>"
+        COMMENT "Copying onnxruntime.dll to executable directory"
+    )
+endif()

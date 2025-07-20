@@ -5,6 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <fftw3.h>
+#include <numbers>
 
 // Constructor
 MelSpectrogram::MelSpectrogram() {
@@ -55,7 +56,7 @@ float MelSpectrogram::mel_to_hz(float mel) {
 std::vector<float> MelSpectrogram::create_hann_window(int size) {
     std::vector<float> window(size);
     for (int i = 0; i < size; ++i) {
-        window[i] = 0.5f * (1.0f - std::cos(2.0f * M_PI * i / size));
+        window[i] = 0.5f * (1.0f - std::cos(2.0f * std::numbers::pi * i / size));
     }
     return window;
 }

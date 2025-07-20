@@ -12,6 +12,8 @@
 #include <iomanip>
 #include <set>
 #include <stdexcept>
+#include <codecvt>
+#include <locale>
 
 namespace BeatThis {
 
@@ -23,8 +25,26 @@ public:
 
     explicit Impl(const std::string& onnx_model_path) 
         : env(ORT_LOGGING_LEVEL_WARNING, "beat_this_cpp_api") {
+        // Check if file exists
+        std::ifstream file_check(onnx_model_path);
+        if (!file_check.good()) {
+            throw std::runtime_error("ONNX model file not found: " + onnx_model_path);
+        }
+        file_check.close();
+        
         Ort::SessionOptions session_options;
-        session = std::make_unique<Ort::Session>(env, onnx_model_path.c_str(), session_options);
+        
+        // Convert string to wstring for ONNX Runtime
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+        std::wstring w_model_path = converter.from_bytes(onnx_model_path);
+        
+        try {
+            session = std::make_unique<Ort::Session>(env, w_model_path.c_str(), session_options);
+        } catch (const Ort::Exception& e) {
+            std::cerr << "ONNX Runtime error during session creation: " << e.what() << std::endl;
+            std::cerr << "Error code: " << e.GetOrtErrorCode() << std::endl;
+            throw std::runtime_error("ONNX Runtime error: " + std::string(e.what()));
+        }
     }
 };
 
@@ -191,8 +211,11 @@ BeatResult BeatThis::process_audio(const std::vector<float>& audio_data,
         };
 
     } catch (const Ort::Exception& e) {
+        std::cerr << "ONNX Runtime error: " << e.what() << std::endl;
+        std::cerr << "Error code: " << e.GetOrtErrorCode() << std::endl;
         throw std::runtime_error("ONNX Runtime error: " + std::string(e.what()));
     } catch (const std::exception& e) {
+        std::cerr << "Processing error: " << e.what() << std::endl;
         throw std::runtime_error("Processing error: " + std::string(e.what()));
     }
 }

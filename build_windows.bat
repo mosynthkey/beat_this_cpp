@@ -11,10 +11,10 @@ echo Configuring project...
 REM Try to find vcpkg installation
 if exist "C:\vcpkg\scripts\buildsystems\vcpkg.cmake" (
     echo Using vcpkg toolchain...
-    cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+    cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
 ) else (
     echo vcpkg not found at C:\vcpkg - trying default paths...
-    cmake .. -G "Visual Studio 17 2022" -A x64
+    cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
 )
 
 if %ERRORLEVEL% neq 0 (
@@ -36,7 +36,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Build the project
 echo Building project...
-cmake --build . --config Release
+cmake --build . --config Debug
 
 if %ERRORLEVEL% neq 0 (
     echo Build failed!
@@ -46,6 +46,4 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Build completed successfully!
-echo Executables are in: build\Release\
-echo.
-pause
+echo.echo.echo Executables are in: build\Debug\

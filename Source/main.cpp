@@ -6,6 +6,8 @@
 #include <set>
 #include <algorithm>
 #include <cmath>
+#include <numbers>
+#include <filesystem> // For absolute path conversion
 
 #include "sndfile.h" // For load_audio_for_example
 #include "soxr.h"    // For resampling in mixed audio
@@ -16,7 +18,7 @@ bool load_audio_for_example(const std::string& path, std::vector<float>& audio_b
     SF_INFO sfinfo;
     SNDFILE* infile = sf_open(path.c_str(), SFM_READ, &sfinfo);
     if (!infile) {
-        std::cerr << "Error: could not open audio file: " << path << std::endl;
+        std::cerr << "Error: could not open audio file '" << path << "': " << sf_strerror(NULL) << std::endl;
         return false;
     }
 
@@ -78,7 +80,7 @@ std::vector<float> generate_sine_wave(
             amplitude = static_cast<double>(num_samples - i) / decay_samples;
         }
 
-        waveform[i] = static_cast<float>(amplitude * std::sin(2.0 * M_PI * frequency * t));
+        waveform[i] = static_cast<float>(amplitude * std::sin(2.0 * std::numbers::pi * frequency * t));
     }
     return waveform;
 }
@@ -245,6 +247,11 @@ int main(int argc, char* argv[]) {
 
     const std::string onnx_model_path = argv[1];
     const std::string audio_file_path = argv[2];
+    
+    // Convert to absolute paths
+    std::filesystem::path onnx_path = std::filesystem::absolute(onnx_model_path);
+    std::filesystem::path audio_path = std::filesystem::absolute(audio_file_path);
+    
     std::string output_beats_file;
     std::string output_wav_file;
     std::string output_mixed_file;
@@ -274,13 +281,13 @@ int main(int argc, char* argv[]) {
 
     try {
         // Initialize the BeatThis API
-        BeatThis::BeatThis beat_analyzer(onnx_model_path);
+        BeatThis::BeatThis beat_analyzer(onnx_path.string());
 
         // Load audio for example
         std::vector<float> audio_buffer;
         int samplerate;
         int channels;
-        if (!load_audio_for_example(audio_file_path, audio_buffer, samplerate, channels)) {
+        if (!load_audio_for_example(audio_path.string(), audio_buffer, samplerate, channels)) {
             return 1;
         }
 
