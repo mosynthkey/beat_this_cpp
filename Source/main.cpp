@@ -9,25 +9,46 @@
 #include <numbers>
 #include <filesystem> // For absolute path conversion
 
-#include "sndfile.h" // For load_audio_for_example
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
 #include "soxr.h"    // For resampling in mixed audio
 #include "beat_this_api.h"
 
 // Function to load audio from file
 bool load_audio_for_example(const std::string& path, std::vector<float>& audio_buffer, int& samplerate, int& channels) {
-    SF_INFO sfinfo;
-    SNDFILE* infile = sf_open(path.c_str(), SFM_READ, &sfinfo);
-    if (!infile) {
-        std::cerr << "Error: could not open audio file '" << path << "': " << sf_strerror(NULL) << std::endl;
+    ma_result result;
+    ma_decoder decoder;
+    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 2, 0);
+
+    result = ma_decoder_init_file(path.c_str(), &config, &decoder);
+    if (result != MA_SUCCESS) {
+        std::cerr << "Error: could not open audio file '" << path << "': " << ma_result_description(result) << std::endl;
         return false;
     }
 
-    samplerate = sfinfo.samplerate;
-    channels = sfinfo.channels;
-    audio_buffer.resize(sfinfo.frames * sfinfo.channels);
-    sf_read_float(infile, audio_buffer.data(), audio_buffer.size());
+    samplerate = decoder.outputSampleRate;
+    channels = decoder.outputChannels;
 
-    sf_close(infile);
+    // Read all audio data
+    ma_uint64 total_frames = 0;
+    result = ma_decoder_get_length_in_pcm_frames(&decoder, &total_frames);
+    if (result != MA_SUCCESS) {
+        std::cerr << "Error: could not get audio length: " << ma_result_description(result) << std::endl;
+        ma_decoder_uninit(&decoder);
+        return false;
+    }
+
+    audio_buffer.resize(total_frames * channels);
+    ma_uint64 frames_read = 0;
+    result = ma_decoder_read_pcm_frames(&decoder, audio_buffer.data(), total_frames, &frames_read);
+    if (result != MA_SUCCESS || frames_read != total_frames) {
+        std::cerr << "Error: could not read all audio frames: " << ma_result_description(result) << std::endl;
+        ma_decoder_uninit(&decoder);
+        return false;
+    }
+
+    ma_decoder_uninit(&decoder);
     return true;
 }
 
@@ -87,20 +108,25 @@ std::vector<float> generate_sine_wave(
 
 // Function to write WAV file
 bool write_wav_file(const std::string& filepath, const std::vector<float>& audio_data, int sample_rate, int channels = 1) {
-    SF_INFO sfinfo;
-    sfinfo.samplerate = sample_rate;
-    sfinfo.channels = channels;
-    sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+    ma_result result;
+    ma_encoder encoder;
+    ma_encoder_config config = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, (ma_uint32)channels, (ma_uint32)sample_rate);
 
-    SNDFILE* outfile = sf_open(filepath.c_str(), SFM_WRITE, &sfinfo);
-    if (!outfile) {
-        std::cerr << "Error: Could not open WAV file for writing: " << filepath << std::endl;
-        std::cerr << sf_strerror(NULL) << std::endl;
+    result = ma_encoder_init_file(filepath.c_str(), &config, &encoder);
+    if (result != MA_SUCCESS) {
+        std::cerr << "Error: Could not open WAV file for writing: " << ma_result_description(result) << std::endl;
         return false;
     }
 
-    sf_write_float(outfile, audio_data.data(), audio_data.size());
-    sf_close(outfile);
+    ma_uint64 frames_written = 0;
+    result = ma_encoder_write_pcm_frames(&encoder, audio_data.data(), audio_data.size() / channels, &frames_written);
+    if (result != MA_SUCCESS || frames_written != audio_data.size() / channels) {
+        std::cerr << "Error: Could not write all audio frames: " << ma_result_description(result) << std::endl;
+        ma_encoder_uninit(&encoder);
+        return false;
+    }
+
+    ma_encoder_uninit(&encoder);
     return true;
 }
 

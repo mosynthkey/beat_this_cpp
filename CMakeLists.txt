@@ -61,11 +61,6 @@ endif()
 # --- Find Dependencies --- #
 if(WIN32)
     # Windows: Use vcpkg find_package
-    find_package(SndFile CONFIG REQUIRED)
-    
-    # Set variables for compatibility
-    set(SNDFILE_INCLUDE_DIRS ${SndFile_INCLUDE_DIRS})
-    set(SNDFILE_LIBRARIES SndFile::sndfile)
     
     # Set soxr paths manually
     set(SOXR_INCLUDE_DIRS "C:/vcpkg/installed/x64-windows/include")
@@ -74,10 +69,6 @@ else()
     # macOS and Linux: Use pkg-config
     find_package(PkgConfig REQUIRED)
     
-    pkg_check_modules(SNDFILE REQUIRED sndfile)
-    link_directories(/opt/homebrew/opt/libsndfile/lib)
-    include_directories(/opt/homebrew/opt/libsndfile/include)
-
     # Manually set SOXR paths for Homebrew installation
     set(SOXR_INCLUDE_DIRS /opt/homebrew/opt/libsoxr/include)
     set(SOXR_LIBRARIES /opt/homebrew/opt/libsoxr/lib/libsoxr.dylib)
@@ -104,13 +95,13 @@ endif()
 
 target_include_directories(beat_this_api PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS}
-    ${SNDFILE_INCLUDE_DIRS}
     ${SOXR_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/pocketfft # Add PocketFFT include directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/miniaudio # Add miniaudio include directory
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For header files
 )
 
-target_link_libraries(beat_this_api onnxruntime ${SNDFILE_LIBRARIES} ${SOXR_LIBRARIES})
+target_link_libraries(beat_this_api onnxruntime ${SOXR_LIBRARIES})
 
 if(WIN32)
     add_custom_command(
@@ -128,11 +119,11 @@ add_executable(beat_this_cpp Source/main.cpp)
 target_include_directories(beat_this_cpp PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS} # For main.cpp to include onnxruntime_cxx_api.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For beat_this_api.h
-    ${SNDFILE_INCLUDE_DIRS}
     ${SOXR_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/miniaudio # Add miniaudio include directory
 )
 
-target_link_libraries(beat_this_cpp beat_this_api ${SNDFILE_LIBRARIES})
+target_link_libraries(beat_this_cpp beat_this_api)
 
 if(WIN32)
     add_custom_command(

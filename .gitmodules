@@ -4,3 +4,6 @@
 [submodule "Submodule/pocketfft"]
 	path = Submodule/pocketfft
 	url = git@github.com:mreineck/pocketfft.git
+[submodule "Submodule/miniaudio"]
+	path = Submodule/miniaudio
+	url = git@github.com:mackron/miniaudio.git
