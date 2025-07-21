@@ -62,16 +62,9 @@ endif()
 if(WIN32)
     # Windows: Use vcpkg find_package
     
-    # Set soxr paths manually
-    set(SOXR_INCLUDE_DIRS "C:/vcpkg/installed/x64-windows/include")
-    set(SOXR_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/soxr.lib")
 else()
     # macOS and Linux: Use pkg-config
     find_package(PkgConfig REQUIRED)
-    
-    # Manually set SOXR paths for Homebrew installation
-    set(SOXR_INCLUDE_DIRS /opt/homebrew/opt/libsoxr/include)
-    set(SOXR_LIBRARIES /opt/homebrew/opt/libsoxr/lib/libsoxr.dylib)
 endif()
 
 add_library(beat_this_api SHARED 
@@ -95,13 +88,12 @@ endif()
 
 target_include_directories(beat_this_api PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS}
-    ${SOXR_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/pocketfft # Add PocketFFT include directory
     ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/miniaudio # Add miniaudio include directory
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For header files
 )
 
-target_link_libraries(beat_this_api onnxruntime ${SOXR_LIBRARIES})
+target_link_libraries(beat_this_api onnxruntime)
 
 if(WIN32)
     add_custom_command(
@@ -119,7 +111,6 @@ add_executable(beat_this_cpp Source/main.cpp)
 target_include_directories(beat_this_cpp PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS} # For main.cpp to include onnxruntime_cxx_api.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For beat_this_api.h
-    ${SOXR_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/miniaudio # Add miniaudio include directory
 )
 

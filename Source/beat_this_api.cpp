@@ -1,9 +1,8 @@
+#define MINIAUDIO_IMPLEMENTATION
 #include "beat_this_api.h"
 #include "MelSpectrogram.h"
 #include "InferenceProcessor.h"
 #include "Postprocessor.h"
-
-#include "soxr.h"
 
 #include <iostream>
 #include <memory>
@@ -14,6 +13,7 @@
 #include <stdexcept>
 #include <codecvt>
 #include <locale>
+#include "miniaudio.h"
 namespace BeatThis {
 
 // Pimpl implementation
@@ -132,29 +132,33 @@ namespace {
     // Helper function to resample audio
     bool resample_audio(const std::vector<float>& in_buffer, int in_rate, 
                        std::vector<float>& out_buffer, int out_rate) {
-        size_t in_len = in_buffer.size();
-        size_t out_len = static_cast<size_t>(in_len * static_cast<double>(out_rate) / in_rate);
-        out_buffer.resize(out_len);
+        ma_resampler resampler;
+        ma_resampler_config resampler_config = ma_resampler_config_init(
+            ma_format_f32, 1, (ma_uint32)in_rate, (ma_uint32)out_rate, ma_resample_algorithm_linear);
 
-        soxr_error_t error;
-        soxr_quality_spec_t q_spec = soxr_quality_spec(SOXR_HQ, 0);
-        soxr_t soxr = soxr_create(in_rate, out_rate, 1, &error, nullptr, &q_spec, nullptr);
-        if (error) {
-            std::cerr << "Error: soxr_create failed: " << soxr_strerror(error) << std::endl;
+        ma_result result = ma_resampler_init(&resampler_config, nullptr, &resampler);
+        if (result != MA_SUCCESS) {
+            std::cerr << "Error: ma_resampler_init failed: " << ma_result_description(result) << std::endl;
             return false;
         }
 
-        size_t odone;
-        error = soxr_process(soxr, in_buffer.data(), in_len, nullptr, 
-                           out_buffer.data(), out_len, &odone);
-        if (error) {
-            std::cerr << "Error: soxr_process failed: " << soxr_strerror(error) << std::endl;
-            soxr_delete(soxr);
+        ma_uint64 in_frames = in_buffer.size();
+        ma_uint64 out_frames_estimated = 0;
+        ma_resampler_get_expected_output_frame_count(&resampler, in_frames, &out_frames_estimated);
+        out_buffer.resize(out_frames_estimated);
+
+        ma_uint64 frames_in = in_frames;
+        ma_uint64 frames_out = out_frames_estimated;
+
+        result = ma_resampler_process_pcm_frames(&resampler, in_buffer.data(), &frames_in, out_buffer.data(), &frames_out);
+        if (result != MA_SUCCESS) {
+            std::cerr << "Error: ma_resampler_process_pcm_frames failed: " << ma_result_description(result) << std::endl;
+            ma_resampler_uninit(&resampler, nullptr);
             return false;
         }
 
-        out_buffer.resize(odone);
-        soxr_delete(soxr);
+        out_buffer.resize(frames_out);
+        ma_resampler_uninit(&resampler, nullptr);
         return true;
     }
 

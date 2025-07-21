@@ -30,19 +30,20 @@ The system consists of four main components:
 
 ## Dependencies
 
-- **FFTW3**: Fast Fourier Transform library
-- **libsndfile**: Audio file I/O
-- **libsoxr**: High-quality audio resampling
+- **PocketFFT**: Fast Fourier Transform library
+- **miniaudio**: Audio file I/O and resampling
 - **ONNX Runtime**: Neural network inference engine
 
 ## Installation
 
+This project uses `miniaudio` and `pocketfft` as submodules, so no external installation is required for these libraries. ONNX Runtime is fetched automatically by CMake.
+
 ### macOS
 
 ```bash
-brew install fftw libsndfile libsoxr
+# No external dependencies to install via Homebrew for miniaudio and pocketfft.
+# ONNX Runtime is fetched automatically.
 ```
-
 
 ### Windows
 
@@ -63,19 +64,12 @@ cd C:\vcpkg
 
 2. **Install dependencies**:
 ```cmd
-# Install the required packages
-C:\vcpkg\vcpkg.exe install fftw3:x64-windows
-C:\vcpkg\vcpkg.exe install libsndfile:x64-windows  
-C:\vcpkg\vcpkg.exe install soxr:x64-windows
-
-# Or install all at once:
-C:\vcpkg\vcpkg.exe install fftw3 libsndfile soxr --triplet=x64-windows
+# No external dependencies to install via vcpkg for miniaudio and pocketfft.
+# ONNX Runtime is fetched automatically.
 ```
 
 **Option 2: Manual Installation**
-- FFTW3: Download from http://www.fftw.org/install/windows.html
-- libsndfile: Download from https://libsndfile.github.io/libsndfile/
-- soxr: Build from source or use vcpkg
+- No manual installation required for miniaudio and pocketfft as they are submodules.
 
 ## Building
 
@@ -181,7 +175,7 @@ for (size_t i = 0; i < result.beats.size(); ++i) {
 ## File Formats
 
 ### Input Audio
-- **Supported formats**: WAV, FLAC, OGG, MP3 (via libsndfile)
+- **Supported formats**: WAV, FLAC, OGG, MP3 (via miniaudio)
 - **Recommended**: WAV, 22050 Hz, mono
 - **Automatic processing**: Stereo → mono conversion, resampling
 
@@ -314,16 +308,7 @@ After a successful build, the executables will be in:
 
 If you prefer not to use vcpkg, you can manually download and install:
 
-1. **FFTW3**: Download from http://www.fftw.org/install/windows.html
-2. **libsndfile**: Download from https://libsndfile.github.io/libsndfile/
-3. **soxr**: Build from source or use vcpkg
-
-Then set the environment variables:
-```cmd
-set FFTW_ROOT=C:\path\to\fftw
-set SNDFILE_ROOT=C:\path\to\libsndfile  
-set SOXR_ROOT=C:\path\to\soxr
-```
+- No manual installation required for miniaudio and pocketfft as they are submodules.
 
 ## Model Details
 
@@ -354,4 +339,4 @@ Note: This C++ implementation is separate from the original Beat This! repositor
 
 - **Original Beat This! Implementation**: This C++ port is based on the Beat This! model from Johannes Kepler University Linz. Please refer to the [original repository](https://github.com/CPJKU/beat_this) for the original implementation, research paper, and licensing terms.
 - **ONNX Runtime**: Microsoft's high-performance inference engine
-- **Dependencies**: FFTW (Fastest Fourier Transform in the West), libsndfile, and libsoxr developers
+- **Dependencies**: PocketFFT, miniaudio, and ONNX Runtime developers

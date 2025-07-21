@@ -9,10 +9,9 @@
 #include <numbers>
 #include <filesystem> // For absolute path conversion
 
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
-#include "soxr.h"    // For resampling in mixed audio
+
 #include "beat_this_api.h"
 
 // Function to load audio from file
