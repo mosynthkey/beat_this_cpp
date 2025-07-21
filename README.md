@@ -91,25 +91,13 @@ make
 
 ### Windows
 
-**Method 1: Using the Build Script (Recommended)**
 ```cmd
-cd C:\path\to\beat_this_cpp
-build_windows.bat
-```
-
-**Method 2: Manual Build**
-```cmd
-# Set the CMake toolchain file
-set CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
-
-# Create build directory and configure
 mkdir build
 cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
-
-# Build the project
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
+
 
 ONNX Runtime will be automatically downloaded during the first build.
 
