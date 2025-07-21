@@ -1,6 +1,6 @@
 # Beat This! C++ Implementation
 
-A C++ port of the "Beat This!" AI-powered beat tracking system from Johannes Kepler University Linz. This implementation provides high-performance, production-ready beat and downbeat detection for audio processing applications.
+A C++ port of the "Beat This!" AI-powered beat tracking system from Johannes Kepler University Linz. 
 
 ## Overview
 
@@ -11,11 +11,9 @@ This is a C++ implementation of the Beat This! model, originally published at IS
 
 ## Features
 
-- **High-Performance**: Native C++ implementation for production environments
 - **Cross-Platform**: Support for macOS and Windows
 - **Multiple Output Formats**: Export beats to `.beats` files, generate audio click tracks, or create mixed audio with original music
 - **C++ API**: Clean, type-safe interface with RAII and move semantics
-- **Memory Efficient**: Optimized for low memory usage and fast processing
 - **ONNX Runtime**: Uses optimized neural network inference
 - **Flexible CLI**: Support for individual output formats (beats-only or audio-only)
 
@@ -34,43 +32,6 @@ The system consists of four main components:
 - **miniaudio**: Audio file I/O and resampling
 - **ONNX Runtime**: Neural network inference engine
 
-## Installation
-
-This project uses `miniaudio` and `pocketfft` as submodules, so no external installation is required for these libraries. ONNX Runtime is fetched automatically by CMake.
-
-### macOS
-
-```bash
-# No external dependencies to install via Homebrew for miniaudio and pocketfft.
-# ONNX Runtime is fetched automatically.
-```
-
-### Windows
-
-**Option 1: Using vcpkg (Recommended)**
-
-1. **Install vcpkg**:
-```cmd
-# Clone vcpkg
-git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-cd C:\vcpkg
-
-# Bootstrap vcpkg
-.\bootstrap-vcpkg.bat
-
-# Integrate with Visual Studio (optional but recommended)
-.\vcpkg.exe integrate install
-```
-
-2. **Install dependencies**:
-```cmd
-# No external dependencies to install via vcpkg for miniaudio and pocketfft.
-# ONNX Runtime is fetched automatically.
-```
-
-**Option 2: Manual Installation**
-- No manual installation required for miniaudio and pocketfft as they are submodules.
-
 ## Building
 
 ### Prerequisites
@@ -79,27 +40,14 @@ The pre-converted ONNX model is already included in the repository (`onnx/beat_t
 
 If you need to convert a custom model, see [onnx/README.md](onnx/README.md) for detailed instructions on converting PyTorch checkpoints to ONNX format.
 
-### macOS
-
 ```bash
-git clone https://github.com/your-username/beat_this_cpp.git
+git clone https://github.com/mosynthkey/beat_this_cpp.git
 cd beat_this_cpp
+git submodule update --init --recursive
 mkdir build && cd build
-cmake ..
-make
+cmake -S . -B build
+cmake --build build
 ```
-
-### Windows
-
-```cmd
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-cmake --build . --config Release
-```
-
-
-ONNX Runtime will be automatically downloaded during the first build.
 
 ### Build Options
 
@@ -164,7 +112,6 @@ for (size_t i = 0; i < result.beats.size(); ++i) {
 
 ### Input Audio
 - **Supported formats**: WAV, FLAC, OGG, MP3 (via miniaudio)
-- **Recommended**: WAV, 22050 Hz, mono
 - **Automatic processing**: Stereo → mono conversion, resampling
 
 ### Output Beats File
@@ -184,7 +131,6 @@ The `.beats` file format contains tab-separated values:
 Generated WAV files contain:
 - **Downbeats**: 880 Hz sine wave
 - **Other beats**: 440 Hz sine wave
-- **Format**: 44.1 kHz, mono, float
 - **Duration**: 0.1 seconds per beat with ADSR envelope
 
 ### Mixed Audio (`--output-mixed`)
@@ -195,20 +141,6 @@ Mixed audio files combine original music with click track:
 - **Stereo/mono support**: Stereo inputs remain stereo, mono inputs remain mono
 - **High fidelity**: No resampling or format conversion to preserve audio quality
 - **Duration**: Uses the longer of original audio or beat track duration
-
-#### Mixed Audio Technical Details
-- **Stereo processing**: Click track is added to both left and right channels
-- **Mono processing**: Click track is added directly to the mono channel
-- **Automatic normalization**: Prevents clipping while maintaining dynamic range
-- **Frame-accurate timing**: Beat placement is sample-accurate for tight synchronization
-
-## Performance
-
-The C++ implementation provides significant performance improvements over the original Python version:
-
-- **Speed**: ~10x faster processing
-- **Memory**: ~50% lower memory usage
-- **Accuracy**: Identical results to Python implementation (within 1e-6 tolerance)
 
 ## Project Structure
 
@@ -275,28 +207,6 @@ namespace BeatThis {
 After a successful build, the executables will be in:
 - `build\Release\beat_this_cpp.exe` - Main application
 - `build\Release\beat_this_api.dll` - API library
-
-### Troubleshooting
-
-**CMake can't find dependencies**:
-- Make sure vcpkg is properly installed and integrated
-- Verify the CMAKE_TOOLCHAIN_FILE points to the correct vcpkg cmake file
-- Try setting CMAKE_PREFIX_PATH: `set CMAKE_PREFIX_PATH=C:\vcpkg\installed\x64-windows`
-
-**Missing DLL errors when running**:
-- Make sure `onnxruntime.dll` is in the same directory as the executable, or in your PATH
-- The build process should automatically copy it, but you may need to do this manually
-
-**Visual Studio version issues**:
-- If you have a different version of Visual Studio, adjust the generator:
-  - VS 2019: `-G "Visual Studio 16 2019" -A x64`
-  - VS 2017: `-G "Visual Studio 15 2017" -A x64`
-
-### Alternative: Using Pre-built Libraries
-
-If you prefer not to use vcpkg, you can manually download and install:
-
-- No manual installation required for miniaudio and pocketfft as they are submodules.
 
 ## Model Details
 
