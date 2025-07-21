@@ -6,7 +6,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
-#include <fftw3.h>
+#include "pocketfft_hdronly.h"
 
 /**
  * @class MelSpectrogram

@@ -4,8 +4,8 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
-#include <fftw3.h>
 #include <numbers>
+#include "pocketfft_hdronly.h"
 
 // Constructor
 MelSpectrogram::MelSpectrogram() {
@@ -149,28 +149,30 @@ std::vector<std::vector<float>> MelSpectrogram::compute(const std::vector<float>
     log1p_input_cpp.resize(num_frames, std::vector<double>(n_mels));
     last_power_spectrum.resize(num_frames, std::vector<double>(n_fft / 2 + 1));
 
-    // FFTW setup
-    fftwf_complex* out = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * (n_fft / 2 + 1));
-    float* in = (float*) fftwf_malloc(sizeof(float) * n_fft);
-    fftwf_plan plan = fftwf_plan_dft_r2c_1d(n_fft, in, out, FFTW_ESTIMATE);
+    // PocketFFT setup
+    std::vector<std::complex<float>> out_pocket(n_fft / 2 + 1);
+    std::vector<float> in_pocket(n_fft);
+    pocketfft::shape_t shape = { (size_t)n_fft };
+    pocketfft::stride_t stride_in = { sizeof(float) };
+    pocketfft::stride_t stride_out = { sizeof(std::complex<float>) };
 
     for (int i = 0; i < num_frames; ++i) {
         // Extract frame and apply window
         int start_idx = i * hop_length;
         for (int j = 0; j < n_fft; ++j) {
-            in[j] = padded_audio[start_idx + j] * window[j];
+            in_pocket[j] = padded_audio[start_idx + j] * window[j];
         }
 
         // Execute FFT
-        fftwf_execute(plan);
+        pocketfft::r2c(shape, stride_in, stride_out, 0, true, in_pocket.data(), out_pocket.data(), 1.0f);
 
 
         // Compute amplitude spectrum and apply normalization
         std::vector<double> amplitude_spectrum(n_fft / 2 + 1);
         double normalization_factor = std::sqrt(static_cast<double>(win_length));
         for (int j = 0; j < n_fft / 2 + 1; ++j) {
-            double real = out[j][0];
-            double imag = out[j][1];
+            double real = out_pocket[j].real();
+            double imag = out_pocket[j].imag();
             amplitude_spectrum[j] = std::sqrt(real * real + imag * imag) / normalization_factor;
         }
         
@@ -188,10 +190,7 @@ std::vector<std::vector<float>> MelSpectrogram::compute(const std::vector<float>
         }
     }
 
-    // Clean up FFTW
-    fftwf_destroy_plan(plan);
-    fftwf_free(in);
-    fftwf_free(out);
+    // No explicit cleanup needed for PocketFFT with std::vector
 
     return mel_spectrogram_output;
 }

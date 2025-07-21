@@ -19,22 +19,7 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 endif()
 
-# --- FFTW --- #
-if(WIN32)
-    # Windows: Use vcpkg find_package for headers, manual library linking
-    find_package(FFTW3 CONFIG REQUIRED)
-    set(FFTW3_INCLUDE_DIR ${FFTW3_INCLUDE_DIRS})
-    set(FFTW3_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/fftw3f.lib")
-elseif(APPLE)
-    # Add Homebrew library path for macOS
-    link_directories(/opt/homebrew/lib)
-    set(FFTW3_INCLUDE_DIR /opt/homebrew/opt/fftw/include)
-    set(FFTW3_LIBRARIES /opt/homebrew/opt/fftw/lib/libfftw3f.dylib)
-else()
-    # Linux: Use pkg-config
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FFTW3 REQUIRED fftw3f)
-endif()
+
 
 # --- ONNX Runtime --- #
 # Option to use system ONNX Runtime or fetch automatically
@@ -76,12 +61,9 @@ endif()
 # --- Find Dependencies --- #
 if(WIN32)
     # Windows: Use vcpkg find_package
-    find_package(FFTW3 CONFIG REQUIRED)
     find_package(SndFile CONFIG REQUIRED)
     
     # Set variables for compatibility
-    set(FFTW3_INCLUDE_DIRS ${FFTW3_INCLUDE_DIRS})
-    set(FFTW3_LIBRARIES "C:/vcpkg/installed/x64-windows/lib/fftw3f.lib")
     set(SNDFILE_INCLUDE_DIRS ${SndFile_INCLUDE_DIRS})
     set(SNDFILE_LIBRARIES SndFile::sndfile)
     
@@ -93,7 +75,12 @@ else()
     find_package(PkgConfig REQUIRED)
     
     pkg_check_modules(SNDFILE REQUIRED sndfile)
-    pkg_check_modules(SOXR REQUIRED soxr)
+    link_directories(/opt/homebrew/opt/libsndfile/lib)
+    include_directories(/opt/homebrew/opt/libsndfile/include)
+
+    # Manually set SOXR paths for Homebrew installation
+    set(SOXR_INCLUDE_DIRS /opt/homebrew/opt/libsoxr/include)
+    set(SOXR_LIBRARIES /opt/homebrew/opt/libsoxr/lib/libsoxr.dylib)
 endif()
 
 add_library(beat_this_api SHARED 
@@ -119,12 +106,11 @@ target_include_directories(beat_this_api PRIVATE
     ${ONNXRUNTIME_INCLUDE_DIRS}
     ${SNDFILE_INCLUDE_DIRS}
     ${SOXR_INCLUDE_DIRS}
-    ${FFTW3_INCLUDE_DIR}
-    ${FFTW3_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Submodule/pocketfft # Add PocketFFT include directory
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For header files
 )
 
-target_link_libraries(beat_this_api onnxruntime ${SNDFILE_LIBRARIES} ${SOXR_LIBRARIES} ${FFTW3_LIBRARIES})
+target_link_libraries(beat_this_api onnxruntime ${SNDFILE_LIBRARIES} ${SOXR_LIBRARIES})
 
 if(WIN32)
     add_custom_command(
@@ -144,8 +130,6 @@ target_include_directories(beat_this_cpp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source # For beat_this_api.h
     ${SNDFILE_INCLUDE_DIRS}
     ${SOXR_INCLUDE_DIRS}
-    ${FFTW3_INCLUDE_DIR}
-    ${FFTW3_INCLUDE_DIRS}
 )
 
 target_link_libraries(beat_this_cpp beat_this_api ${SNDFILE_LIBRARIES})

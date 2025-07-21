@@ -1,3 +1,6 @@
 [submodule "onnx/beat_this"]
 	path = onnx/beat_this
 	url = https://github.com/CPJKU/beat_this.git
+[submodule "Submodule/pocketfft"]
+	path = Submodule/pocketfft
+	url = git@github.com:mreineck/pocketfft.git
